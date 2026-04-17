@@ -15,8 +15,16 @@
     .v-field
       height: 100%
 
-      &.v-otp-field--hovered .v-field__outline
-        --v-field-border-opacity: var(--v-high-emphasis-opacity)
+      &.v-otp-field--hovered
+        .v-field__outline
+          --v-field-border-opacity: var(--v-high-emphasis-opacity)
+
+      &--variant-filled.v-otp-field--hovered .v-field__overlay,
+      &--variant-solo-filled.v-otp-field--hovered .v-field__overlay
+        opacity: calc((0.04 + var(--v-hover-opacity)) * var(--v-theme-overlay-multiplier))
+
+      &--variant-solo-inverted.v-otp-field--hovered .v-field__overlay
+        opacity: calc((0.04 + var(--v-hover-opacity)) * var(--v-theme-overlay-multiplier))
 
       &--variant-solo.v-field--focused .v-field__overlay,
       &--variant-plain.v-field--focused .v-field__overlay

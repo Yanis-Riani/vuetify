@@ -382,6 +382,14 @@ export const VOtpInput = genericComponent<VOtpInputSlots>()({
       renderSelectionEnd.value = newEnd
     }
 
+    function getSlotIndexAtPoint (x: number, y: number): number | null {
+      const elements = document.elementsFromPoint(x, y)
+      const slotEl = elements.find(el => el.hasAttribute('data-otp-index'))
+      if (!slotEl) return null
+      const index = Number(slotEl.getAttribute('data-otp-index'))
+      return Number.isNaN(index) ? null : index
+    }
+
     function focusAt (index: number) {
       const input = inputRef.value
       if (!input) return
@@ -397,33 +405,26 @@ export const VOtpInput = genericComponent<VOtpInputSlots>()({
 
     function onInputMousedown (e: MouseEvent) {
       if (e.button !== 0) return
-      const elements = document.elementsFromPoint(e.clientX, e.clientY)
-      const slotEl = elements.find(el => el.hasAttribute('data-otp-index'))
-      if (slotEl) {
+      const index = getSlotIndexAtPoint(e.clientX, e.clientY)
+      if (index != null) {
         e.preventDefault()
-        const index = Number(slotEl.getAttribute('data-otp-index'))
-        if (!Number.isNaN(index)) {
-          focusAt(index)
-        }
+        focusAt(index)
       }
     }
 
     const hoveredIndex = shallowRef<number | null>(null)
     const canHover = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
     let hoveredRaf: number | null = null
+    let lastMouseX = 0
+    let lastMouseY = 0
 
     function onInputMousemove (e: MouseEvent) {
+      lastMouseX = e.clientX
+      lastMouseY = e.clientY
       if (hoveredRaf !== null) return
       hoveredRaf = requestAnimationFrame(() => {
         hoveredRaf = null
-        const elements = document.elementsFromPoint(e.clientX, e.clientY)
-        const slotEl = elements.find(el => el.hasAttribute('data-otp-index'))
-        if (slotEl) {
-          const index = Number(slotEl.getAttribute('data-otp-index'))
-          hoveredIndex.value = Number.isNaN(index) ? null : index
-        } else {
-          hoveredIndex.value = null
-        }
+        hoveredIndex.value = getSlotIndexAtPoint(lastMouseX, lastMouseY)
       })
     }
 
