@@ -28,6 +28,7 @@ export const VOtpField = genericComponent()({
     }
 
     const slot = computed(() => otpInput.otpSlots.value[props.index])
+    const isHovered = computed(() => otpInput.hoveredIndex.value === props.index)
 
     useRender(() => {
       if (!slot.value) return (<></>)
@@ -35,6 +36,7 @@ export const VOtpField = genericComponent()({
       return (
         <VField
           focused={ (otpInput.isFocused.value && otpInput.focusAll.value) || slot.value.isActive }
+          class={{ 'v-otp-field--hovered': isHovered.value }}
           data-otp-index={ props.index }
           onClick={ () => otpInput.focusAt(props.index) }
         >

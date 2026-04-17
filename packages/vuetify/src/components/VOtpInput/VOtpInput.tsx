@@ -20,7 +20,7 @@ import { useProxiedModel } from '@/composables/proxiedModel'
 import { useToggleScope } from '@/composables/toggleScope'
 
 // Utilities
-import { computed, effectScope, provide, ref, toRef, watch, watchEffect } from 'vue'
+import { computed, effectScope, onBeforeUnmount, provide, ref, shallowRef, toRef, watch, watchEffect } from 'vue'
 import { filterInputAttrs, genericComponent, pick, propsFactory, useRender } from '@/util'
 
 // Types
@@ -40,6 +40,7 @@ export interface VOtpInputContext {
   divider: Ref<string | undefined>
   merged: Ref<boolean>
   focusAt: (index: number) => void
+  hoveredIndex: Ref<number | null>
 }
 
 export const VOtpInputSymbol: InjectionKey<VOtpInputContext> = Symbol.for('vuetify:v-otp-input')
@@ -263,6 +264,7 @@ export const VOtpInput = genericComponent<VOtpInputSlots>()({
 
     function onFocus () {
       focus()
+      startHoverTracking()
       if (focusAtPending) return
       const input = inputRef.value
       if (!input) return
@@ -275,6 +277,7 @@ export const VOtpInput = genericComponent<VOtpInputSlots>()({
 
     function onBlur () {
       blur()
+      stopHoverTracking()
       renderSelectionStart.value = null
       renderSelectionEnd.value = null
     }
@@ -307,6 +310,7 @@ export const VOtpInput = genericComponent<VOtpInputSlots>()({
     }
 
     function onKeydown (e: KeyboardEvent) {
+      hoveredIndex.value = null
       // Intercept Bulk Delete
       // Since default browser behavior on selection is to trigger DeleteContentForward/Backward whatever the key pressed
       if (e.key !== 'Backspace' && e.key !== 'Delete') return
@@ -404,6 +408,54 @@ export const VOtpInput = genericComponent<VOtpInputSlots>()({
       }
     }
 
+    const hoveredIndex = shallowRef<number | null>(null)
+    const canHover = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
+    let hoveredRaf: number | null = null
+
+    function onInputMousemove (e: MouseEvent) {
+      if (hoveredRaf !== null) return
+      hoveredRaf = requestAnimationFrame(() => {
+        hoveredRaf = null
+        const elements = document.elementsFromPoint(e.clientX, e.clientY)
+        const slotEl = elements.find(el => el.hasAttribute('data-otp-index'))
+        if (slotEl) {
+          const index = Number(slotEl.getAttribute('data-otp-index'))
+          hoveredIndex.value = Number.isNaN(index) ? null : index
+        } else {
+          hoveredIndex.value = null
+        }
+      })
+    }
+
+    function onInputMouseleave () {
+      if (hoveredRaf !== null) {
+        cancelAnimationFrame(hoveredRaf)
+        hoveredRaf = null
+      }
+      hoveredIndex.value = null
+    }
+
+    function startHoverTracking () {
+      if (!canHover) return
+      const input = inputRef.value
+      if (!input) return
+      input.addEventListener('mousemove', onInputMousemove)
+      input.addEventListener('mouseleave', onInputMouseleave)
+    }
+
+    function stopHoverTracking () {
+      const input = inputRef.value
+      if (!input) return
+      input.removeEventListener('mousemove', onInputMousemove)
+      input.removeEventListener('mouseleave', onInputMouseleave)
+      onInputMouseleave()
+    }
+
+    onBeforeUnmount(() => {
+      if (hoveredRaf !== null) cancelAnimationFrame(hoveredRaf)
+      stopHoverTracking()
+    })
+
     function reset () {
       model.value = []
     }
@@ -427,6 +479,7 @@ export const VOtpInput = genericComponent<VOtpInputSlots>()({
       divider: toRef(() => props.divider),
       merged: toRef(() => props.merged),
       focusAt,
+      hoveredIndex,
     })
 
     watch(model, val => {
